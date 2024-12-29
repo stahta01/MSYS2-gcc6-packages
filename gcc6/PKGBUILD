@@ -10,15 +10,23 @@
 
 ### Major build options
 _enable_bootstrap=yes    # Use yes for production
+STRIP_OPTION="strip"
+#STRIP_OPTION="!strip"
+#DEBUG_OPTION="debug"
+DEBUG_OPTION="!debug"
 ### build options not normally changed
 _BUGURL="https://github.com/stahta01/MSYS2-gcc6-packages/issues"
+
+# 64 bit fails bootstrap compare
+if [[ "$_enable_bootstrap" == "yes" && ${MSYSTEM_CARCH} == "x86_64" ]]; then
+  _enable_bootstrap=no
+fi
 
 _realname=gcc
 pkgbase=${_realname}6
 pkgname=('gcc')
 pkgver=6.4.0
-pkgrel=5
-#_sourcedir=${_realname}-git
+pkgrel=6
 _sourcedir=${_realname}-${pkgver}
 pkgdesc="The GNU Compiler Collection"
 arch=('i686' 'x86_64')
@@ -28,10 +36,6 @@ url="https://gcc.gnu.org/"
 makedepends=('binutils' 'mpc-devel' 'gmp-devel'
              'mpfr-devel' 'zlib-devel'
              'windows-default-manifest')
-STRIP_OPTION="strip"
-#STRIP_OPTION="!strip"
-#DEBUG_OPTION="debug"
-DEBUG_OPTION="!debug"
 options=('!emptydirs' "$STRIP_OPTION" "$DEBUG_OPTION")
 ISL_VERSION=0.16.1
 noextract=(#"gcc-${pkgver}.tar.gz"
@@ -256,6 +260,7 @@ build() {
     --enable-static \
     --disable-shared \
     --disable-shared-libgcc \
+    --disable-lto \
     --enable-version-specific-runtime-libs \
     --with-arch=${_arch} \
     --with-tune=generic \
@@ -263,7 +268,7 @@ build() {
     ${_arch_conf} \
     --enable-__cxa_atexit \
     --with-dwarf2 \
-    --enable-languages=c,c++,lto \
+    --enable-languages=c,c++ \
     --enable-graphite \
     --disable-threads \
     --enable-libatomic \
@@ -288,10 +293,6 @@ build() {
     --with-default-libstdcxx-abi=gcc4-compatible
 
   make
-
-  # make documentation
-  #cd $CHOST/libstdc++-v3
-  #make doc-man-doxygen
 }
 
 #check() {
@@ -316,26 +317,8 @@ package_gcc()
   fi
 
   make -j1 DESTDIR=${pkgdir} install
-  #if [ "$CARCH" = "x86_64" ]
-  #then
-    #mv ${pkgdir}/usr/lib/gcc/${CHOST}/lib/libgcc_s.dll.a ${pkgdir}/usr/lib/gcc/${CHOST}/${pkgver/-*/.*}/
-    #rm -rf ${pkgdir}/usr/lib/gcc/${CHOST}/lib
-  #fi
-  # install -d ${pkgdir}/usr/share/gdb/auto-load/usr/lib
-  # mv $pkg{pkgdir}dir{,/usr/share/gdb/auto-load}/usr/lib/libstdc++.so.6.0.18-gdb.py
 
-  ## unfortunately it is much, much easier to install the lot and clean-up the mess...
-  ## remove all DLLs
-  #rm -f ${pkgdir}/usr/bin/*.dll
-
-  #rm -f ${pkgdir}/usr/lib/libiberty.a
-  ## rm -f ${pkgdir}/usr/lib/gcc/${CHOST}/${pkgver}/libatomic{.dll,}.a
-  #rm -f ${pkgdir}/usr/lib/gcc/$CHOST/${pkgver}/f951.exe
-  #rm -f ${pkgdir}/usr/share/locale/{de,fr}/LC_MESSAGES/libstdc++.mo
   rm -fr ${pkgdir}/usr/share/info
-
-  # remove static libraries - note libstdc++.a is needed for the binutils and glibc testsuite
-  #rm ${pkgdir}/usr/lib/gcc/${CHOST}/${pkgver}/lib{gomp,quadmath}{.dll,}.a
 
   # many packages expect this symlinks
   ln -s gcc ${pkgdir}/usr/bin/cc
@@ -369,11 +352,6 @@ exec /usr/bin/gcc $fl ${1+"$@"}
 EOF
 
   chmod 755 ${pkgdir}/usr/bin/c{8,9}9
-
-  # install the libstdc++ man pages
-  # install -dm755 ${pkgdir}/usr/share/man/man3
-  # install -m644 -t ${pkgdir}/usr/share/man/man3 \
-  #  ${CHOST}/libstdc++-v3/doc/doxygen/man/man3/*.3
 
   # Install Runtime Library Exception
   install -Dm644 ${srcdir}/gcc-${pkgver}/COPYING.RUNTIME \
